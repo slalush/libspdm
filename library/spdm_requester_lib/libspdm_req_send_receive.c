@@ -6,6 +6,11 @@
 
 #include "internal/libspdm_requester_lib.h"
 
+typedef struct {
+    uint8_t request_request_code;
+    libspdm_get_spdm_requester_func get_request_func;
+} libspdm_get_request_struct_t;
+
 libspdm_return_t libspdm_send_request(void *spdm_context, const uint32_t *session_id,
                                       bool is_app_message,
                                       size_t request_size, void *request)
@@ -682,4 +687,25 @@ receive_done:
     #endif /* LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP */
 
     return status;
+}
+
+libspdm_get_spdm_requester_func libspdm_get_request_func_via_request_code(uint8_t request_code)
+{
+    size_t index;
+
+    libspdm_get_request_struct_t get_request_struct[] = {
+        { SPDM_GET_VERSION, libspdm_try_get_version_dbg },
+        { SPDM_GET_CAPABILITIES, libspdm_try_get_capabilities_dbg },
+        { SPDM_NEGOTIATE_ALGORITHMS, libspdm_try_negotiate_algorithms_dbg },
+	{ SPDM_CHALLENGE, libspdm_try_challenge_dbg },
+
+    };
+
+    LIBSPDM_ASSERT(request_code != SPDM_RESPOND_IF_READY);
+    for (index = 0; index < sizeof(get_request_struct) / sizeof(get_request_struct[0]); index++) {
+        if (request_code == get_request_struct[index].request_request_code) {
+            return get_request_struct[index].get_request_func;
+        }
+    }
+    return NULL;
 }

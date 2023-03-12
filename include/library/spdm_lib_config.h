@@ -79,6 +79,9 @@
 #ifndef LIBSPDM_MAX_MESSAGE_BUFFER_SIZE
 #define LIBSPDM_MAX_MESSAGE_BUFFER_SIZE 0x1200
 #endif
+#ifndef LIBSPDM_MAX_MESSAGE_LARGE_BUFFER_SIZE
+#define LIBSPDM_MAX_MESSAGE_LARGE_BUFFER_SIZE LIBSPDM_MAX_MESSAGE_BUFFER_SIZE /* to hold message_a before negotiate*/
+#endif
 #ifndef LIBSPDM_MAX_MESSAGE_SMALL_BUFFER_SIZE
 #define LIBSPDM_MAX_MESSAGE_SMALL_BUFFER_SIZE 0x100  /* to hold message_a before negotiate*/
 #endif
@@ -97,7 +100,7 @@
  * transcript before calculating the digest or signature.
  */
 #ifndef LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
-#define LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT 0
+#define LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT 1
 #endif
 
 

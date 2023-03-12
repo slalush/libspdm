@@ -12,6 +12,10 @@
 #include "internal/libspdm_common_lib.h"
 #include "hal/library/platform_lib.h"
 
+typedef libspdm_return_t (*libspdm_get_spdm_requester_func)(
+    libspdm_context_t *spdm_context, size_t request_size, const void *request,
+    size_t response_size, void *response);
+
 /**
  * This function handles simple error code.
  *
@@ -92,6 +96,26 @@ libspdm_return_t libspdm_handle_error_large_response(
 libspdm_return_t libspdm_get_version(libspdm_context_t *spdm_context,
                                      uint8_t *version_number_entry_count,
                                      spdm_version_number_t *version_number_entry);
+
+libspdm_return_t libspdm_try_get_version_dbg(libspdm_context_t *spdm_context, size_t spdm_request_size,
+                			     const void *spdm_request,
+					     size_t spdm_response_size,
+					     void *spdm_response);
+
+libspdm_return_t libspdm_try_get_capabilities_dbg(libspdm_context_t *spdm_context, size_t spdm_request_size,
+                			     const void *spdm_request,
+					     size_t spdm_response_size,
+					     void *spdm_response);
+
+libspdm_return_t libspdm_try_negotiate_algorithms_dbg(libspdm_context_t *spdm_context, size_t spdm_request_size,
+                    				      const void *spdm_request,
+						      size_t spdm_response_size,
+						      void *spdm_response);
+
+libspdm_return_t libspdm_try_challenge_dbg(libspdm_context_t *spdm_context, size_t request_size,
+				     const void *request,
+				     size_t response_size,
+				     void *response);
 
 /**
  * This function sends GET_CAPABILITIES and receives CAPABILITIES.
@@ -477,6 +501,8 @@ libspdm_return_t libspdm_receive_spdm_response(libspdm_context_t *spdm_context,
                                                const uint32_t *session_id,
                                                size_t *response_size,
                                                void **response);
+
+libspdm_get_spdm_requester_func libspdm_get_request_func_via_request_code(uint8_t request_code);
 
 /**
  * This function allocates half of session ID for a requester.

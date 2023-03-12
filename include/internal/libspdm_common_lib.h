@@ -394,6 +394,10 @@ typedef struct {
     /* See LIBSPDM_DATA_HANDLE_ERROR_RETURN_POLICY_*. */
     uint8_t handle_error_return_policy;
 
+    libspdm_large_managed_buffer_t fw_direct_rsp_mem;
+
+    uint8_t public_key[200];
+
 #if LIBSPDM_ENABLE_CAPABILITY_CHUNK_CAP
     /* Chunk specific context */
     libspdm_chunk_context_t chunk_context;
@@ -402,6 +406,7 @@ typedef struct {
 #if LIBSPDM_ENABLE_MSG_LOG
     libspdm_msg_log_t msg_log;
 #endif /* LIBSPDM_ENABLE_MSG_LOG */
+
 } libspdm_context_t;
 
 #define LIBSPDM_CONTEXT_SIZE_WITHOUT_SECURED_CONTEXT (sizeof(libspdm_context_t))

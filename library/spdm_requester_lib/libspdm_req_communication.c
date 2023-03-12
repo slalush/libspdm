@@ -5,6 +5,133 @@
  **/
 
 #include "internal/libspdm_requester_lib.h"
+#include "stdio.h"
+
+struct fw_direct_cmd_header {
+	uint32_t req_msg_code;
+	uint32_t req_msg_size;
+	uint32_t rsp_msg_code;
+	uint32_t rsp_msg_size;
+};
+
+libspdm_return_t spdm_read_cmds_from_file(void *context)
+{
+    FILE *ptr;
+    libspdm_context_t *spdm_context = context;
+    uint32_t total_size;
+    size_t n_read_bytes;
+    uint32_t *fw_direct_rsp_mem_buf;
+
+    ptr = fopen("//home//ewurmbra//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_cmds.bin","rb");  // r for read, b for binary
+//    ptr = fopen("spdm_resp2.bin","rb");  // r for read, b for binary
+
+    n_read_bytes = fread((void *)&total_size,sizeof(uint32_t),1,ptr); // read 10 bytes to our buffer
+    if (!n_read_bytes)
+	return LIBSPDM_STATUS_INVALID_MSG_SIZE;
+
+    libspdm_init_managed_buffer((void *)&spdm_context->fw_direct_rsp_mem, LIBSPDM_MAX_MESSAGE_LARGE_BUFFER_SIZE);
+
+    fw_direct_rsp_mem_buf = libspdm_get_managed_buffer((void *)&spdm_context->fw_direct_rsp_mem);
+
+    n_read_bytes = fread((void *)fw_direct_rsp_mem_buf, total_size, 1, ptr); // read 10 bytes to our buffer
+//    if (n_read_bytes != total_size)
+//	return LIBSPDM_STATUS_INVALID_MSG_SIZE;
+
+    spdm_context->fw_direct_rsp_mem.max_buffer_size = total_size;
+
+    fclose(ptr);
+
+    return LIBSPDM_STATUS_SUCCESS;
+}
+
+libspdm_return_t spdm_read_pk_from_file(void *context)
+{
+    FILE *ptr;
+    libspdm_context_t *spdm_context = context;
+    uint32_t total_size = 96;
+    uint8_t temp;
+    int i;
+    //size_t n_read_bytes2;
+    libspdm_data_parameter_t parameter;
+
+//    ptr = fopen("//home//ewurmbra//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_resp2.bin","rb");  // r for read, b for binary
+    ptr = fopen("//home//ewurmbra//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_pk_be.bin","rb");  // r for read, b for binary
+
+    (void)fread((void *)spdm_context->public_key, total_size, 1, ptr); // read 10 bytes to our buffer
+    //if (n_read_bytes2 != total_size)
+//	return LIBSPDM_STATUS_SUCCESS;
+
+    for(i = 0; i < 76; i += 4) {
+	    temp =  spdm_context->public_key[i];
+	    spdm_context->public_key[i] = spdm_context->public_key[i+3];
+	    spdm_context->public_key[i+3] = temp;
+
+	    temp =  spdm_context->public_key[i+1];
+	    spdm_context->public_key[i+1] = spdm_context->public_key[i+2];
+	    spdm_context->public_key[i+2] = temp;
+    }
+
+    parameter.location = LIBSPDM_DATA_LOCATION_LOCAL;
+    libspdm_set_data(spdm_context, LIBSPDM_DATA_PEER_PUBLIC_KEY, &parameter,
+		    (void *)spdm_context->public_key, 96);
+
+    fclose(ptr);
+
+    return 0;
+}
+
+uint16_t fw_direct_index;
+
+libspdm_return_t spdm_verify_response_msg(void *context)
+{
+    libspdm_context_t *spdm_context = context;
+    struct fw_direct_cmd_header *header;
+    libspdm_return_t status;
+    libspdm_get_spdm_requester_func get_request_func;
+    uint8_t my_response[LIBSPDM_MAX_MESSAGE_MEDIUM_BUFFER_SIZE];
+    size_t my_response_size = LIBSPDM_MAX_MESSAGE_MEDIUM_BUFFER_SIZE;
+    uint8_t my_request[LIBSPDM_MAX_MESSAGE_MEDIUM_BUFFER_SIZE];
+    size_t my_request_size = LIBSPDM_MAX_MESSAGE_MEDIUM_BUFFER_SIZE;
+    size_t total_size = spdm_context->fw_direct_rsp_mem.max_buffer_size - sizeof(uint32_t);
+    //uint8_t alignment = sizeof(uint32_t) -1;
+    //size_t aligned_msg_size;
+    //uint8_t bytes_2_align;
+    //uint8_t n_misalign;
+
+    fw_direct_index = spdm_context->fw_direct_rsp_mem.buffer_size;
+
+    while (fw_direct_index < total_size) {
+	    header = (struct fw_direct_cmd_header *)&spdm_context->fw_direct_rsp_mem.buffer[fw_direct_index];
+
+	    my_request_size = header->req_msg_size;
+	    my_response_size = header->rsp_msg_size;
+	    fw_direct_index += sizeof(struct fw_direct_cmd_header);
+
+	    get_request_func = libspdm_get_request_func_via_request_code(header->req_msg_code);
+	    if (get_request_func == NULL) {
+		    return LIBSPDM_STATUS_INVALID_PARAMETER;
+	    }
+
+	    libspdm_copy_mem((void *)my_request, header->req_msg_size, (const void *)&spdm_context->fw_direct_rsp_mem.buffer[fw_direct_index], header->req_msg_size);
+
+	    fw_direct_index += header->req_msg_size;
+
+	    libspdm_copy_mem((void *)my_response, header->rsp_msg_size, (const void *)&spdm_context->fw_direct_rsp_mem.buffer[fw_direct_index], header->rsp_msg_size);
+
+	    fw_direct_index += header->rsp_msg_size;
+
+	    status = get_request_func(spdm_context,
+				       my_request_size,
+				       my_request,
+				       my_response_size, my_response);
+
+	    if (LIBSPDM_STATUS_IS_ERROR(status)) {
+		    return status;
+	    }
+    }
+
+    return LIBSPDM_STATUS_SUCCESS;
+}
 
 libspdm_return_t libspdm_init_connection(void *spdm_context, bool get_version_only)
 {

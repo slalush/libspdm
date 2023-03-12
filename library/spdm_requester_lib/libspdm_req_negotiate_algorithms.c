@@ -71,15 +71,9 @@ static libspdm_return_t libspdm_try_negotiate_algorithms(libspdm_context_t *spdm
     size_t spdm_request_size;
     libspdm_algorithms_response_max_t *spdm_response;
     size_t spdm_response_size;
-    uint32_t algo_size;
-    size_t index;
-    spdm_negotiate_algorithms_common_struct_table_t *struct_table;
-    uint8_t fixed_alg_size;
-    uint8_t ext_alg_count;
     uint8_t *message;
     size_t message_size;
     size_t transport_header_size;
-    uint8_t alg_type_pre;
 
     /* -=[Verify State Phase]=- */
     if (spdm_context->connection_info.connection_state !=
@@ -164,8 +158,40 @@ static libspdm_return_t libspdm_try_negotiate_algorithms(libspdm_context_t *spdm
     status = libspdm_receive_spdm_response(spdm_context, NULL, &spdm_response_size,
                                            (void **)&spdm_response);
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
-        goto receive_done;
+        goto receive_done1;
     }
+
+    status = libspdm_try_get_capabilities_dbg(spdm_context, spdm_request_size, spdm_request, spdm_response_size, spdm_response);
+
+receive_done1:
+    libspdm_release_receiver_buffer (spdm_context);
+    return status;
+}
+
+libspdm_return_t libspdm_try_negotiate_algorithms_dbg(libspdm_context_t *spdm_context, size_t request_size,
+                    				      const void *request,
+						      size_t response_size,
+						      void *response)
+{
+    libspdm_return_t status;
+    libspdm_negotiate_algorithms_request_mine_t *spdm_request = (libspdm_negotiate_algorithms_request_mine_t *)request;
+    size_t spdm_request_size = (size_t)request_size;
+    libspdm_algorithms_response_max_t *spdm_response = (libspdm_algorithms_response_max_t *)response;
+    size_t spdm_response_size = (size_t)response_size;
+    uint32_t algo_size;
+    uint32_t index;
+    spdm_negotiate_algorithms_common_struct_table_t *struct_table;
+    uint8_t fixed_alg_size;
+    uint8_t ext_alg_count;
+    uint8_t alg_type_pre;
+
+    /* -=[Verify State Phase]=- */
+    if (spdm_context->connection_info.connection_state !=
+        LIBSPDM_CONNECTION_STATE_AFTER_CAPABILITIES) {
+        return LIBSPDM_STATUS_INVALID_STATE_LOCAL;
+    }
+
+    libspdm_reset_message_buffer_via_request_code(spdm_context, NULL, SPDM_NEGOTIATE_ALGORITHMS);
 
     /* -=[Validate Response Phase]=- */
     if (spdm_response_size < sizeof(spdm_message_header_t)) {
@@ -509,7 +535,7 @@ static libspdm_return_t libspdm_try_negotiate_algorithms(libspdm_context_t *spdm
     status = LIBSPDM_STATUS_SUCCESS;
 
 receive_done:
-    libspdm_release_receiver_buffer (spdm_context);
+   // libspdm_release_receiver_buffer (spdm_context);
     return status;
 }
 

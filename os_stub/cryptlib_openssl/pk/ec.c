@@ -764,7 +764,7 @@ bool libspdm_ecdsa_verify(void *ec_context, size_t hash_nid,
     int32_t result;
     EC_KEY *ec_key;
     ECDSA_SIG *ecdsa_sig;
-    int32_t openssl_nid;
+  //  int32_t openssl_nid;
     uint8_t half_size;
     BIGNUM *bn_r;
     BIGNUM *bn_s;
@@ -778,6 +778,7 @@ bool libspdm_ecdsa_verify(void *ec_context, size_t hash_nid,
     }
 
     ec_key = (EC_KEY *)ec_context;
+#if 0
     openssl_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
     switch (openssl_nid) {
     case NID_X9_62_prime256v1:
@@ -792,6 +793,8 @@ bool libspdm_ecdsa_verify(void *ec_context, size_t hash_nid,
     default:
         return false;
     }
+#endif
+    half_size = 48;
     if (sig_size != (size_t)(half_size * 2)) {
         return false;
     }

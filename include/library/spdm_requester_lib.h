@@ -70,6 +70,12 @@ libspdm_return_t libspdm_receive_response(void *spdm_context,
  **/
 libspdm_return_t libspdm_init_connection(void *spdm_context, bool get_version_only);
 
+libspdm_return_t spdm_verify_response_msg(void *context);
+
+libspdm_return_t spdm_read_cmds_from_file(void *context);
+
+libspdm_return_t spdm_read_pk_from_file(void *context);
+
 /**
  * This function sends GET_DIGEST to get all digest of the certificate chains from device.
  *

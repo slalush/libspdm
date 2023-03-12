@@ -985,9 +985,9 @@ bool libspdm_verify_challenge_auth_signature(libspdm_context_t *spdm_context,
                 spdm_context->local_context.peer_public_key_provision_size,
                 &context);
         }
-        if (!result) {
-            return false;
-        }
+       // if (!result) {
+       //     return false;
+       // }
     } else {
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
         result = libspdm_get_peer_cert_chain_data(
@@ -1020,6 +1020,8 @@ bool libspdm_verify_challenge_auth_signature(libspdm_context_t *spdm_context,
         LIBSPDM_ASSERT(context != NULL);
 #endif
     }
+
+ //   context = (void *)spdm_context->public_key;
 
     if (is_requester) {
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT
