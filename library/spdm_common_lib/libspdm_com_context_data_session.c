@@ -27,8 +27,8 @@ void libspdm_session_info_init(libspdm_context_t *spdm_context,
     case 0:
         session_type = LIBSPDM_SESSION_TYPE_NONE;
         break;
-    case (SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP |
-          SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP):
+    case (SPDM_GET_CAPABILITIES_REQUEST_FLAGS_ENCRYPT_CAP):
+          //SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP):
         session_type = LIBSPDM_SESSION_TYPE_ENC_MAC;
         break;
     case SPDM_GET_CAPABILITIES_REQUEST_FLAGS_MAC_CAP:

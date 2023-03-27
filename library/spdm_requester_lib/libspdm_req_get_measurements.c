@@ -143,22 +143,11 @@ static libspdm_return_t libspdm_try_get_measurement(libspdm_context_t *spdm_cont
                                                     void *requester_nonce,
                                                     void *responder_nonce)
 {
-    bool result;
-    libspdm_return_t status;
+   libspdm_return_t status;
     spdm_get_measurements_request_t *spdm_request;
     size_t spdm_request_size;
     spdm_measurements_response_t *spdm_response;
     size_t spdm_response_size;
-    uint32_t measurement_record_data_length;
-    uint8_t *measurement_record_data;
-    spdm_measurement_block_common_header_t *measurement_block_header;
-    uint32_t measurement_block_size;
-    uint8_t measurement_block_count;
-    uint8_t *ptr;
-    void *nonce;
-    uint16_t opaque_length;
-    void *signature;
-    size_t signature_size;
     libspdm_session_info_t *session_info;
     libspdm_session_state_t session_state;
     uint8_t *message;
@@ -202,13 +191,6 @@ static libspdm_return_t libspdm_try_get_measurement(libspdm_context_t *spdm_cont
             SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MEAS_CAP_NO_SIG) &&
         ((request_attribute & SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_GENERATE_SIGNATURE) != 0)) {
         return LIBSPDM_STATUS_INVALID_PARAMETER;
-    }
-
-    if ((request_attribute & SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_GENERATE_SIGNATURE) != 0) {
-        signature_size = libspdm_get_asym_signature_size(
-            spdm_context->connection_info.algorithm.base_asym_algo);
-    } else {
-        signature_size = 0;
     }
 
     libspdm_reset_message_buffer_via_request_code(spdm_context, NULL, SPDM_GET_MEASUREMENTS);
@@ -284,10 +266,86 @@ static libspdm_return_t libspdm_try_get_measurement(libspdm_context_t *spdm_cont
     status = libspdm_receive_spdm_response(
         spdm_context, session_id, &spdm_response_size, (void **)&spdm_response);
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
-        goto receive_done;
+        goto receive_done1;
     }
 
-    /* -=[Validate Response Phase]=- */
+    status = libspdm_try_get_measurement_dbg(spdm_context, spdm_request_size, (void *)spdm_request,
+        		    	    	         spdm_response_size, (void *)spdm_response);
+
+receive_done1:
+   	libspdm_release_receiver_buffer (spdm_context);
+   	return status;
+}
+
+libspdm_return_t libspdm_try_get_measurement_dbg(libspdm_context_t *spdm_context, size_t request_size,
+					 const void *request,
+					 size_t response_size,
+					 void *response)
+{
+	    libspdm_return_t status;
+	    bool result;
+	    spdm_get_measurements_request_t *spdm_request = (spdm_get_measurements_request_t *)request;
+	    size_t spdm_request_size = request_size;
+	    spdm_measurements_response_t *spdm_response = (spdm_measurements_response_t *)response;
+	    size_t spdm_response_size = response_size;
+	    uint32_t measurement_record_data_length;
+	    uint8_t *measurement_record_data;
+	    spdm_measurement_block_common_header_t *measurement_block_header;
+	    uint32_t measurement_block_size;
+	    uint8_t measurement_block_count;
+	    uint16_t opaque_length;
+	    uint8_t *ptr;
+	    void *nonce;
+	    void *signature;
+	    size_t signature_size;
+	    libspdm_session_info_t *session_info = NULL;
+	    const uint32_t *session_id = NULL;
+	    uint8_t request_attribute;
+	    uint8_t measurement_operation;
+	    size_t message_size = 30;
+	    void *responder_nonce = NULL;
+	    uint8_t *content_changed = NULL;
+	    uint8_t n_blocks;
+	    uint8_t *number_of_blocks = &n_blocks;
+	    uint32_t *measurement_record_length = NULL;
+	    void *measurement_record = NULL;
+	    uint8_t slot_id_param;
+
+		/* -=[Verify State Phase]=- */
+		if (!libspdm_is_capabilities_flag_supported(
+				spdm_context, true, 0,
+				SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MEAS_CAP)) {
+			return LIBSPDM_STATUS_UNSUPPORTED_CAP;
+		}
+
+		LIBSPDM_ASSERT(spdm_context->local_context.algorithm.measurement_spec != 0);
+
+		if (spdm_context->connection_info.connection_state < LIBSPDM_CONNECTION_STATE_NEGOTIATED) {
+			return LIBSPDM_STATUS_INVALID_STATE_LOCAL;
+		}
+
+		request_attribute = spdm_request->header.param1;
+		measurement_operation = spdm_request->header.param2;
+		slot_id_param = spdm_request->slot_id_param;
+	    spdm_context->connection_info.peer_used_cert_chain_slot_id = slot_id_param;
+
+		if (libspdm_is_capabilities_flag_supported(
+				spdm_context, true, 0,
+				SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_MEAS_CAP_NO_SIG) &&
+			((request_attribute & SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_GENERATE_SIGNATURE) != 0)) {
+			return LIBSPDM_STATUS_INVALID_PARAMETER;
+		}
+
+		if ((request_attribute & SPDM_GET_MEASUREMENTS_REQUEST_ATTRIBUTES_GENERATE_SIGNATURE) != 0) {
+			signature_size = libspdm_get_asym_signature_size(
+				spdm_context->connection_info.algorithm.base_asym_algo);
+		} else {
+			signature_size = 0;
+		}
+
+		libspdm_reset_message_buffer_via_request_code(spdm_context, NULL, SPDM_GET_MEASUREMENTS);
+
+	    /* -=[Validate Response Phase]=- */
     if (spdm_response_size < sizeof(spdm_message_header_t)) {
         status = LIBSPDM_STATUS_INVALID_MSG_SIZE;
         goto receive_done;
@@ -296,6 +354,7 @@ static libspdm_return_t libspdm_try_get_measurement(libspdm_context_t *spdm_cont
         status = LIBSPDM_STATUS_INVALID_MSG_FIELD;
         goto receive_done;
     }
+
     if (spdm_response->header.request_response_code == SPDM_ERROR) {
         status = libspdm_handle_error_response_main(
             spdm_context, session_id,
@@ -398,6 +457,8 @@ static libspdm_return_t libspdm_try_get_measurement(libspdm_context_t *spdm_cont
                              measurement_record_data_length +
                              SPDM_NONCE_SIZE + sizeof(uint16_t) +
                              opaque_length + signature_size;
+
+//        libspdm_init_managed_buffer((void *)&session_info->session_transcript.message_m, LIBSPDM_MAX_MESSAGE_LARGE_BUFFER_SIZE);
 
         /* -=[Process Response Phase]=- */
         status = libspdm_append_message_m(spdm_context, session_info, spdm_request,
@@ -592,7 +653,6 @@ static libspdm_return_t libspdm_try_get_measurement(libspdm_context_t *spdm_cont
     #endif /* LIBSPDM_ENABLE_MSG_LOG */
 
 receive_done:
-    libspdm_release_receiver_buffer (spdm_context);
     return status;
 }
 

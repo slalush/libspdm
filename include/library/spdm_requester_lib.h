@@ -76,6 +76,8 @@ libspdm_return_t spdm_read_cmds_from_file(void *context);
 
 libspdm_return_t spdm_read_pk_from_file(void *context);
 
+//libspdm_return_t spdm_read_local_pk_from_file(void *context);
+
 /**
  * This function sends GET_DIGEST to get all digest of the certificate chains from device.
  *

@@ -697,8 +697,9 @@ libspdm_get_spdm_requester_func libspdm_get_request_func_via_request_code(uint8_
         { SPDM_GET_VERSION, libspdm_try_get_version_dbg },
         { SPDM_GET_CAPABILITIES, libspdm_try_get_capabilities_dbg },
         { SPDM_NEGOTIATE_ALGORITHMS, libspdm_try_negotiate_algorithms_dbg },
-	{ SPDM_CHALLENGE, libspdm_try_challenge_dbg },
-
+		{ SPDM_CHALLENGE, libspdm_try_challenge_dbg },
+		{ SPDM_GET_MEASUREMENTS, libspdm_try_get_measurement_dbg },
+		{ SPDM_KEY_EXCHANGE, libspdm_try_send_receive_key_exchange_dbg },
     };
 
     LIBSPDM_ASSERT(request_code != SPDM_RESPOND_IF_READY);

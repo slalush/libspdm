@@ -153,11 +153,11 @@ libspdm_return_t libspdm_try_challenge_dbg(libspdm_context_t *spdm_context, size
     libspdm_return_t status;
     bool result;
     spdm_challenge_request_t *spdm_request = (spdm_challenge_request_t *)request;
-//    size_t spdm_request_size = request_size;
+    size_t spdm_request_size = request_size;
     libspdm_challenge_auth_response_max_t *spdm_response = (libspdm_challenge_auth_response_max_t *)response;
     size_t spdm_response_size = response_size;
     uint8_t *ptr;
-    //void *cert_chain_hash;
+    void *cert_chain_hash;
     size_t hash_size;
     size_t measurement_summary_hash_size;
     void *nonce;
@@ -166,7 +166,6 @@ libspdm_return_t libspdm_try_challenge_dbg(libspdm_context_t *spdm_context, size
     void *signature;
     size_t signature_size;
     uint8_t auth_attribute;
-    uint32_t trans_val = 0xFFFFFFFF;
     uint8_t slot_id;
     uint8_t measurement_hash_type;
     uint8_t *slot_mask = NULL;
@@ -247,9 +246,9 @@ libspdm_return_t libspdm_try_challenge_dbg(libspdm_context_t *spdm_context, size
     }
 
     ptr = spdm_response->cert_chain_hash;
-//    cert_chain_hash = ptr;
+    cert_chain_hash = ptr;
     ptr += hash_size;
-#if 0
+
     LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "cert_chain_hash (0x%x) - ", hash_size));
     LIBSPDM_INTERNAL_DUMP_DATA(cert_chain_hash, hash_size);
     LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
@@ -262,7 +261,7 @@ libspdm_return_t libspdm_try_challenge_dbg(libspdm_context_t *spdm_context, size
         status = LIBSPDM_STATUS_VERIF_FAIL;
         goto receive_done;
     }
-#endif
+
     nonce = ptr;
     LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "nonce (0x%x) - ", SPDM_NONCE_SIZE));
     LIBSPDM_INTERNAL_DUMP_DATA(nonce, SPDM_NONCE_SIZE);
@@ -286,18 +285,18 @@ libspdm_return_t libspdm_try_challenge_dbg(libspdm_context_t *spdm_context, size
     }
     ptr += sizeof(uint16_t);
 
-#if 0
     status = libspdm_append_message_c(spdm_context, spdm_request, spdm_request_size);
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
         status = LIBSPDM_STATUS_BUFFER_FULL;
         goto receive_done;
     }
-#endif
+#if 0
     status = libspdm_append_message_c(spdm_context, (const void *)&trans_val, 4);
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
         status = LIBSPDM_STATUS_BUFFER_FULL;
         goto receive_done;
     }
+#endif
 
     if (spdm_response_size <
         sizeof(spdm_challenge_auth_response_t) + hash_size +

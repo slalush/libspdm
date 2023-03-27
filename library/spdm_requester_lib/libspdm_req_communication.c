@@ -22,7 +22,7 @@ libspdm_return_t spdm_read_cmds_from_file(void *context)
     size_t n_read_bytes;
     uint32_t *fw_direct_rsp_mem_buf;
 
-    ptr = fopen("//home//ewurmbra//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_cmds.bin","rb");  // r for read, b for binary
+    ptr = fopen("//home//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_cmds_new22.bin","rb");  // r for read, b for binary
 //    ptr = fopen("spdm_resp2.bin","rb");  // r for read, b for binary
 
     n_read_bytes = fread((void *)&total_size,sizeof(uint32_t),1,ptr); // read 10 bytes to our buffer
@@ -48,20 +48,27 @@ libspdm_return_t spdm_read_pk_from_file(void *context)
 {
     FILE *ptr;
     libspdm_context_t *spdm_context = context;
-    uint32_t total_size = 96;
-    uint8_t temp;
-    int i;
-    //size_t n_read_bytes2;
+    uint32_t total_size = 0;
+  //  uint8_t temp;
+ //   int i;
+    size_t n_read_bytes2;
     libspdm_data_parameter_t parameter;
 
 //    ptr = fopen("//home//ewurmbra//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_resp2.bin","rb");  // r for read, b for binary
-    ptr = fopen("//home//ewurmbra//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_pk_be.bin","rb");  // r for read, b for binary
+    ptr = fopen("//home//slalush//spdm-emu//spdm_emu//spdm_requester_emu//public_key.der","rb");  // r for read, b for binary
 
-    (void)fread((void *)spdm_context->public_key, total_size, 1, ptr); // read 10 bytes to our buffer
+   // (void)fread((void *)spdm_context->public_key, total_size, 1, ptr); // read 10 bytes to our buffer
     //if (n_read_bytes2 != total_size)
 //	return LIBSPDM_STATUS_SUCCESS;
 
-    for(i = 0; i < 76; i += 4) {
+    while(ptr!=(FILE *)EOF){
+    	   n_read_bytes2 = fread((void *)spdm_context->public_key, 130, 1, ptr); // read 10 bytes to our buffer
+    	   if (!n_read_bytes2)
+    		   break;
+    }
+   total_size = 120;
+
+    /*for(i = 0; i < 76; i += 4) {
 	    temp =  spdm_context->public_key[i];
 	    spdm_context->public_key[i] = spdm_context->public_key[i+3];
 	    spdm_context->public_key[i+3] = temp;
@@ -69,16 +76,69 @@ libspdm_return_t spdm_read_pk_from_file(void *context)
 	    temp =  spdm_context->public_key[i+1];
 	    spdm_context->public_key[i+1] = spdm_context->public_key[i+2];
 	    spdm_context->public_key[i+2] = temp;
-    }
+    }*/
 
+    printf("%ld", n_read_bytes2);
     parameter.location = LIBSPDM_DATA_LOCATION_LOCAL;
     libspdm_set_data(spdm_context, LIBSPDM_DATA_PEER_PUBLIC_KEY, &parameter,
-		    (void *)spdm_context->public_key, 96);
+		    (void *)spdm_context->public_key, total_size);
 
     fclose(ptr);
 
     return 0;
 }
+
+uint8_t my_public_key[200];
+
+#if 0
+libspdm_return_t spdm_read_local_pk_from_file(void *context)
+{
+    FILE *ptr;
+    libspdm_context_t *spdm_context = context;
+    uint32_t total_size = 0;
+    uint8_t temp;
+    int i;
+    size_t n_read_bytes2;
+    libspdm_data_parameter_t parameter;
+
+//    ptr = fopen("//home//ewurmbra//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_resp2.bin","rb");  // r for read, b for binary
+    ptr = fopen("//home//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_pk_be.bin","rb");  // r for read, b for binary
+
+   // (void)fread((void *)spdm_context->public_key, total_size, 1, ptr); // read 10 bytes to our buffer
+    //if (n_read_bytes2 != total_size)
+//	return LIBSPDM_STATUS_SUCCESS;
+
+    //while(ptr!=(FILE *)EOF){
+    	   n_read_bytes2 = fread((void *)my_public_key, 96, 1, ptr); // read 10 bytes to our buffer
+   // 	   if (!n_read_bytes2)
+   //		   break;
+   // }
+   total_size = 96;
+
+    for(i = 0; i < 76; i += 4) {
+	    temp =  my_public_key[i];
+	    my_public_key[i] = my_public_key[i+3];
+	    my_public_key[i+3] = temp;
+
+	    temp =  my_public_key[i+1];
+	    my_public_key[i+1] = my_public_key[i+2];
+	    my_public_key[i+2] = temp;
+    }
+
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "public key size (0x%x) - ", 96));
+    LIBSPDM_INTERNAL_DUMP_DATA(my_public_key, 96);
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+
+    printf("%ld", n_read_bytes2);
+    parameter.location = LIBSPDM_DATA_LOCATION_LOCAL;
+    libspdm_set_data(spdm_context, LIBSPDM_DATA_LOCAL_PUBLIC_KEY, &parameter,
+		    (void *)my_public_key, total_size);
+
+    fclose(ptr);
+
+    return 0;
+}
+#endif
 
 uint16_t fw_direct_index;
 
@@ -93,6 +153,9 @@ libspdm_return_t spdm_verify_response_msg(void *context)
     uint8_t my_request[LIBSPDM_MAX_MESSAGE_MEDIUM_BUFFER_SIZE];
     size_t my_request_size = LIBSPDM_MAX_MESSAGE_MEDIUM_BUFFER_SIZE;
     size_t total_size = spdm_context->fw_direct_rsp_mem.max_buffer_size - sizeof(uint32_t);
+    uint8_t alignment = sizeof(uint32_t) -1;
+    uint8_t bytes_2_align;
+    uint8_t n_misalign;
     //uint8_t alignment = sizeof(uint32_t) -1;
     //size_t aligned_msg_size;
     //uint8_t bytes_2_align;
@@ -101,6 +164,10 @@ libspdm_return_t spdm_verify_response_msg(void *context)
     fw_direct_index = spdm_context->fw_direct_rsp_mem.buffer_size;
 
     while (fw_direct_index < total_size) {
+    	 n_misalign = (fw_direct_index & alignment);
+    	 bytes_2_align = (n_misalign) ? sizeof(uint32_t) - n_misalign : 0;
+    	 fw_direct_index += bytes_2_align;
+
 	    header = (struct fw_direct_cmd_header *)&spdm_context->fw_direct_rsp_mem.buffer[fw_direct_index];
 
 	    my_request_size = header->req_msg_size;
@@ -116,9 +183,23 @@ libspdm_return_t spdm_verify_response_msg(void *context)
 
 	    fw_direct_index += header->req_msg_size;
 
+	    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "SPDM request message (0x%x):\n", my_request_size));
+	    LIBSPDM_INTERNAL_DUMP_HEX(my_request, my_request_size);
+
+	    n_misalign = (fw_direct_index & alignment);
+	    bytes_2_align = (n_misalign) ? sizeof(uint32_t) - n_misalign : 0;
+	    fw_direct_index += bytes_2_align;
+
 	    libspdm_copy_mem((void *)my_response, header->rsp_msg_size, (const void *)&spdm_context->fw_direct_rsp_mem.buffer[fw_direct_index], header->rsp_msg_size);
 
 	    fw_direct_index += header->rsp_msg_size;
+
+	    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "SPDM response message (0x%x):\n", my_response_size));
+	    LIBSPDM_INTERNAL_DUMP_HEX(my_response, my_response_size);
+
+	    n_misalign = (fw_direct_index & alignment);
+	    bytes_2_align = (n_misalign) ? sizeof(uint32_t) - n_misalign : 0;
+	    fw_direct_index += bytes_2_align;
 
 	    status = get_request_func(spdm_context,
 				       my_request_size,

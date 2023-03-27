@@ -387,7 +387,7 @@ static bool libspdm_calculate_m1m2(void *context, bool is_mut,
             );
 
     } else {
-        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "message_a data :\n"));
+    	LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "message_a data :\n"));
         LIBSPDM_INTERNAL_DUMP_HEX(
             libspdm_get_managed_buffer(&spdm_context->transcript.message_a),
             libspdm_get_managed_buffer_size(&spdm_context->transcript.message_a));
@@ -907,6 +907,15 @@ bool libspdm_verify_public_key_hash(libspdm_context_t *spdm_context,
         LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "!!! verify_public_key_hash - FAIL !!!\n"));
         return false;
     }
+
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "peer public key size (0x%x) - ", spdm_context->local_context.peer_public_key_provision_size));
+    LIBSPDM_INTERNAL_DUMP_DATA(spdm_context->local_context.peer_public_key_provision, spdm_context->local_context.peer_public_key_provision_size);
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "pkey cert_chain_hash (0x%x) - ", hash_size));
+    LIBSPDM_INTERNAL_DUMP_DATA(public_key_buffer_hash, hash_size);
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+
     if (libspdm_const_compare_mem(public_key_hash, public_key_buffer_hash,
                                   public_key_hash_size) != 0) {
         LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "!!! verify_public_key_hash - FAIL !!!\n"));

@@ -11,10 +11,18 @@
  * FIPS 186-4 - Digital signature Standard (DSS)
  **/
 
+#include "internal/libspdm_common_lib.h"
 #include "internal_crypt_lib.h"
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/objects.h>
+
+extern unsigned char *generator_y_d;
+//extern unsigned long long *generator_y_d2;
+extern unsigned char *generator_x_d;
+
+unsigned char rev_generator_x_d[48];
+unsigned char rev_generator_y_d[48];
 
 /**
  * Allocates and Initializes one Elliptic Curve context for subsequent use
@@ -65,9 +73,22 @@ void *libspdm_ec_new_by_nid(size_t nid)
     if (!ret_val) {
         return NULL;
     }
+
+    for(int i = 0; i < 48; i++) {
+    	rev_generator_x_d[i] = generator_x_d[47-i];
+    	rev_generator_y_d[i] = generator_y_d[47-i];
+    }
+
+    //generator_x_d =  ec_group->generator->X->d;
+   // generator_y_d =  ec_group->generator->X->d;
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "EC group generator (0x%x):\n", 48));
+    LIBSPDM_INTERNAL_DUMP_HEX((uint8_t *)generator_x_d, 48);
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "EC group generator (0x%x):\n", 48));
+    LIBSPDM_INTERNAL_DUMP_HEX((uint8_t *)generator_y_d, 48);
+
     return (void *)ec_key;
 }
-
+//0xaa 87 ca22 be8b05 378eb1c7 1ef3 20ad74 6e1d3b628ba79b98 59f741e082542a38 5502f25d bf55296c 3a545e3872760ab7
 /**
  * Release the specified EC context.
  *
@@ -372,6 +393,9 @@ bool libspdm_ec_check_key(const void *ec_context)
     return true;
 }
 
+extern unsigned char *g_priv_key;
+unsigned char g_rev_priv_key[48];
+
 /**
  * Generates EC key and returns EC public key (X, Y).
  *
@@ -428,6 +452,16 @@ bool libspdm_ec_generate_key(void *ec_context, uint8_t *public_data,
     if (!ret_val) {
         return false;
     }
+
+    for(int i = 0; i < 48; i++)
+    	g_rev_priv_key[i] = g_priv_key[47-i];
+
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "private key (0x%x):\n", 48));
+    LIBSPDM_INTERNAL_DUMP_HEX((uint8_t *)g_priv_key, 48);
+
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "reversed private key (0x%x):\n", 48));
+    LIBSPDM_INTERNAL_DUMP_HEX((uint8_t *)g_rev_priv_key, 48);
+
     openssl_nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key));
     switch (openssl_nid) {
     case NID_X9_62_prime256v1:

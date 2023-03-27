@@ -271,25 +271,29 @@ static libspdm_return_t libspdm_try_send_receive_key_exchange(
     libspdm_key_exchange_response_max_t *spdm_response;
     size_t spdm_response_size;
     size_t dhe_key_size;
-    uint32_t measurement_summary_hash_size;
-    uint32_t signature_size;
-    uint32_t hmac_size;
     uint8_t *ptr;
-    void *measurement_summary_hash;
-    uint16_t opaque_length;
-    uint8_t *signature;
-    uint8_t *verify_data;
     void *dhe_context;
-    uint16_t req_session_id;
-    uint16_t rsp_session_id;
-    libspdm_session_info_t *session_info;
+   // uint16_t req_session_id;
     size_t opaque_key_exchange_req_size;
-    uint8_t th1_hash_data[LIBSPDM_MAX_HASH_SIZE];
     uint8_t *message;
     size_t message_size;
     size_t transport_header_size;
-    uint8_t mut_auth_requested;
+	libspdm_session_info_t *session_info;
 
+    libspdm_reset_message_buffer_via_request_code(spdm_context, NULL, SPDM_KEY_EXCHANGE);
+
+    /* -=[Construct Request Phase]=- */
+    spdm_context->connection_info.peer_used_cert_chain_slot_id = slot_id;
+    transport_header_size = spdm_context->transport_get_header_size(spdm_context);
+    status = libspdm_acquire_sender_buffer (spdm_context, &message_size, (void **)&message);
+    if (LIBSPDM_STATUS_IS_ERROR(status)) {
+        return status;
+    }
+    LIBSPDM_ASSERT (message_size >= transport_header_size);
+    spdm_request = (void *)(message + transport_header_size);
+    spdm_request_size = message_size - transport_header_size;
+
+#if 0
     /* -=[Check Parameters Phase]=- */
     LIBSPDM_ASSERT((slot_id < SPDM_MAX_SLOT_COUNT) || (slot_id == 0xff));
     LIBSPDM_ASSERT((slot_id != 0xff) ||
@@ -358,6 +362,8 @@ static libspdm_return_t libspdm_try_send_receive_key_exchange(
     }
     spdm_request->reserved = 0;
 
+#endif
+    spdm_context->connection_info.algorithm.dhe_named_group = 16;
     ptr = spdm_request->exchange_data;
     dhe_key_size = libspdm_get_dhe_pub_key_size(
         spdm_context->connection_info.algorithm.dhe_named_group);
@@ -381,6 +387,15 @@ static libspdm_return_t libspdm_try_send_receive_key_exchange(
     LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "RequesterKey (0x%x):\n", dhe_key_size));
     LIBSPDM_INTERNAL_DUMP_HEX(ptr, dhe_key_size);
     ptr += dhe_key_size;
+
+    session_info = libspdm_assign_session_id(spdm_context, 65535, false);
+
+    result = libspdm_secured_message_dhe_compute_key(
+            spdm_context->connection_info.algorithm.dhe_named_group,
+            dhe_context,
+            (const uint8_t *)spdm_request + sizeof(spdm_key_exchange_request_t),
+            dhe_key_size, session_info->secured_message_context);
+
 
     opaque_key_exchange_req_size =
         libspdm_get_opaque_data_supported_version_data_size(spdm_context);
@@ -420,10 +435,71 @@ static libspdm_return_t libspdm_try_send_receive_key_exchange(
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
         libspdm_secured_message_dhe_free(
             spdm_context->connection_info.algorithm.dhe_named_group, dhe_context);
-        goto receive_done;
+        goto receive_done1;
     }
 
-    /* -=[Validate Response Phase]=- */
+status = libspdm_try_send_receive_key_exchange_dbg(spdm_context, spdm_request_size, (void *)spdm_request,
+									 spdm_response_size, (void *)spdm_response);
+
+receive_done1:
+	libspdm_release_receiver_buffer (spdm_context);
+	return status;
+}
+
+libspdm_return_t libspdm_try_send_receive_key_exchange_dbg(libspdm_context_t *spdm_context, size_t request_size,
+					 const void *request,
+					 size_t response_size,
+					 void *response)
+{
+	bool result;
+	libspdm_return_t status;
+	libspdm_key_exchange_request_mine_t *spdm_request = (libspdm_key_exchange_request_mine_t *)request;
+	size_t spdm_request_size = request_size;
+	libspdm_key_exchange_response_max_t *spdm_response = (libspdm_key_exchange_response_max_t *)response;
+	size_t spdm_response_size = response_size;
+	size_t dhe_key_size;
+	uint32_t measurement_summary_hash_size;
+	uint32_t signature_size;
+	uint32_t hmac_size;
+	uint8_t *ptr;
+	void *measurement_summary_hash;
+	uint16_t opaque_length;
+	uint8_t *signature;
+	uint8_t *verify_data;
+	void *dhe_context;
+	uint16_t req_session_id;
+	uint16_t rsp_session_id;
+	libspdm_session_info_t *session_info;
+	uint8_t th1_hash_data[LIBSPDM_MAX_HASH_SIZE];
+	uint8_t mut_auth_requested;
+	uint8_t *heartbeat_period = NULL;
+	uint8_t slot_id_param;
+	uint8_t *req_slot_id_param = &slot_id_param;
+	uint8_t measurement_hash_type = spdm_request->header.param1;
+	void *responder_random = NULL;
+	uint32_t *session_id;
+	void *measurement_hash = NULL;
+	uint8_t session_policy = 0;
+	uint32_t local_session_id;
+
+	session_id = &local_session_id;
+
+	/* -=[Verify State Phase]=- */
+	if (!libspdm_is_capabilities_flag_supported(
+			spdm_context, true,
+			SPDM_GET_CAPABILITIES_REQUEST_FLAGS_KEY_EX_CAP,
+			SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_KEY_EX_CAP)) {
+		return LIBSPDM_STATUS_UNSUPPORTED_CAP;
+	}
+	if (spdm_context->connection_info.connection_state < LIBSPDM_CONNECTION_STATE_NEGOTIATED) {
+		return LIBSPDM_STATUS_INVALID_STATE_LOCAL;
+	}
+
+    libspdm_reset_message_buffer_via_request_code(spdm_context, NULL, SPDM_KEY_EXCHANGE);
+
+    spdm_context->connection_info.peer_used_cert_chain_slot_id = spdm_request->header.param2;
+
+	    /* -=[Validate Response Phase]=- */
     if (spdm_response_size < sizeof(spdm_message_header_t)) {
         libspdm_secured_message_dhe_free(
             spdm_context->connection_info.algorithm.dhe_named_group, dhe_context);
@@ -521,7 +597,9 @@ static libspdm_return_t libspdm_try_send_receive_key_exchange(
         spdm_context->connection_info.algorithm.base_asym_algo);
     measurement_summary_hash_size = libspdm_get_measurement_summary_hash_size(
         spdm_context, true, measurement_hash_type);
-    hmac_size = libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
+    hmac_size = 0;// libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
+    dhe_key_size = libspdm_get_dhe_pub_key_size(
+        spdm_context->connection_info.algorithm.dhe_named_group);
 
     if (libspdm_is_capabilities_flag_supported(
             spdm_context, true,
@@ -650,7 +728,33 @@ static libspdm_return_t libspdm_try_send_receive_key_exchange(
         goto receive_done;
     }
 
-    result = libspdm_secured_message_dhe_compute_key(
+    spdm_context->connection_info.algorithm.dhe_named_group = 16;
+	ptr = spdm_request->exchange_data;
+	dhe_key_size = libspdm_get_dhe_pub_key_size(
+		spdm_context->connection_info.algorithm.dhe_named_group);
+	dhe_context = libspdm_secured_message_dhe_new(
+		spdm_context->connection_info.version,
+		spdm_context->connection_info.algorithm.dhe_named_group, true);
+	if (dhe_context == NULL) {
+		libspdm_release_sender_buffer (spdm_context);
+		return LIBSPDM_STATUS_CRYPTO_ERROR;
+	}
+
+	result = libspdm_secured_message_dhe_generate_key(
+		spdm_context->connection_info.algorithm.dhe_named_group,
+		dhe_context, ptr, &dhe_key_size);
+	if (!result) {
+		libspdm_secured_message_dhe_free(
+			spdm_context->connection_info.algorithm.dhe_named_group, dhe_context);
+		libspdm_release_sender_buffer (spdm_context);
+		return LIBSPDM_STATUS_CRYPTO_ERROR;
+	}
+	LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "RequesterKey (0x%x):\n", dhe_key_size));
+	LIBSPDM_INTERNAL_DUMP_HEX(ptr, dhe_key_size);
+	ptr += dhe_key_size;
+
+#if 0
+	result = libspdm_secured_message_dhe_compute_key(
         spdm_context->connection_info.algorithm.dhe_named_group,
         dhe_context, spdm_response->exchange_data, dhe_key_size,
         session_info->secured_message_context);
@@ -661,6 +765,7 @@ static libspdm_return_t libspdm_try_send_receive_key_exchange(
         status = LIBSPDM_STATUS_CRYPTO_ERROR;
         goto receive_done;
     }
+#endif
 
     LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "libspdm_generate_session_handshake_key[%x]\n",
                    *session_id));
@@ -722,7 +827,7 @@ static libspdm_return_t libspdm_try_send_receive_key_exchange(
     status = LIBSPDM_STATUS_SUCCESS;
 
 receive_done:
-    libspdm_release_receiver_buffer (spdm_context);
+  //  libspdm_release_receiver_buffer (spdm_context);
     return status;
 }
 

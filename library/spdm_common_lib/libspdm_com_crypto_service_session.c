@@ -61,6 +61,10 @@ bool libspdm_calculate_th_for_exchange(
         if (!result) {
             return false;
         }
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "th_curr hash - "));
+        LIBSPDM_INTERNAL_DUMP_HEX(cert_chain_buffer_hash, hash_size);
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+
         status = libspdm_append_managed_buffer(&th_curr, cert_chain_buffer_hash, hash_size);
         if (LIBSPDM_STATUS_IS_ERROR(status)) {
             return false;
@@ -83,6 +87,10 @@ bool libspdm_calculate_th_for_exchange(
     *th_data_buffer_size = libspdm_get_managed_buffer_size(&th_curr);
     libspdm_copy_mem(th_data_buffer, th_data_buffer_capacity,
                      libspdm_get_managed_buffer(&th_curr), *th_data_buffer_size);
+
+    LIBSPDM_INTERNAL_DUMP_HEX(
+    		th_data_buffer,
+			*th_data_buffer_size);
 
     return true;
 }
