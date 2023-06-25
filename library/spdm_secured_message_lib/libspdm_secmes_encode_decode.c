@@ -5,6 +5,109 @@
  **/
 
 #include "internal/libspdm_secured_message_lib.h"
+#include "internal/libspdm_requester_lib.h"
+
+uint8_t my_libspdm_mctp_get_sequence_number(uint64_t sequence_number, uint8_t *sequence_number_buffer)
+{
+	libspdm_copy_mem(sequence_number_buffer, 2, &sequence_number, 2);
+	return 2;
+}
+
+uint32_t my_libspdm_mctp_get_max_random_number_count(void)
+{
+    return 12;
+}
+
+void libspdm_build_secured_message(void *context)
+{
+    //libspdm_test_context_t *spdm_test_context;
+    libspdm_context_t *spdm_context;
+    size_t secured_message_size;
+    uint8_t *secured_message;
+    libspdm_secured_message_callbacks_t spdm_secured_message_callbacks;
+    libspdm_session_info_t *session_info;
+    //bool is_requester;
+    uint32_t session_id;
+    libspdm_secured_message_context_t *secured_message_context;
+    //size_t record_header_max_size;
+    //size_t transport_header_size;
+    uint8_t scratch_buffer[200];
+    size_t scratch_buffer_size;
+    uint8_t *app_message;
+    size_t app_message_size;
+    uint8_t dummy_app_msg[100];
+    uint16_t i;
+    uint16_t nbytes;
+
+    spdm_context = context;
+    spdm_secured_message_callbacks.version = SPDM_SECURED_MESSAGE_CALLBACKS_VERSION;
+    spdm_secured_message_callbacks.get_sequence_number = my_libspdm_mctp_get_sequence_number;
+    spdm_secured_message_callbacks.get_max_random_number_count = my_libspdm_mctp_get_max_random_number_count;
+    session_id = 0xFFFFFFFF;
+//    spdm_context->latest_session_id = session_id;
+    session_info = &spdm_context->session_info[0];
+//    libspdm_session_info_init(spdm_context, session_info, session_id, false);
+    secured_message_context = session_info->secured_message_context;
+    //secured_message_context->session_type = LIBSPDM_SESSION_TYPE_MAC_ONLY;
+    //secured_message_context->session_state = LIBSPDM_SESSION_STATE_HANDSHAKING;
+    //secured_message_context->aead_key_size = LIBSPDM_MAX_AEAD_KEY_SIZE;
+    //secured_message_context->aead_iv_size = LIBSPDM_MAX_AEAD_IV_SIZE;
+
+    /* limit the encoding buffer to avoid assert, because the input buffer is controlled by the the libspdm consumer. */
+#if 0
+    record_header_max_size = sizeof(spdm_secured_message_a_data_header1_t) +
+                             2 + /* MCTP_SEQUENCE_NUMBER_COUNT */
+                             sizeof(spdm_secured_message_a_data_header2_t) +
+                             sizeof(spdm_secured_message_cipher_header_t) +
+                             32; /* MCTP_MAX_RANDOM_NUMBER_COUNT */
+#endif
+  //  LIBSPDM_ASSERT(spdm_test_context->test_buffer_size > record_header_max_size);
+
+    /* For secure message, message is in sender buffer, we need copy it to scratch buffer.
+     * transport_message is always in sender buffer. */
+    //libspdm_get_scratch_buffer (spdm_context, (void **)&scratch_buffer, &scratch_buffer_size);
+    scratch_buffer_size = 200;
+    for (i = 0; i < 50; i++)
+    	dummy_app_msg[i+10] = i;
+
+#if 0
+    libspdm_copy_mem (scratch_buffer + record_header_max_size,
+                      scratch_buffer_size - record_header_max_size,
+                      (uint8_t *)spdm_test_context->test_buffer + record_header_max_size,
+                      spdm_test_context->test_buffer_size - record_header_max_size);
+#endif
+    app_message = dummy_app_msg + 10;
+    app_message_size = 50;
+
+    //transport_header_size = libspdm_transport_mctp_get_header_size(spdm_context);
+    //secured_message = (uint8_t *)spdm_test_context->test_buffer + transport_header_size;
+    //secured_message_size = LIBSPDM_MAX_MESSAGE_BUFFER_SIZE - transport_header_size;
+
+    secured_message = scratch_buffer;
+    secured_message_size = scratch_buffer_size;
+
+    libspdm_encode_secured_message(secured_message_context, session_id, true,
+                                   app_message_size,
+                                   app_message,
+                                   &secured_message_size, secured_message,
+                                   &spdm_secured_message_callbacks);
+
+    nbytes = 8;
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "secured_message Encrypted Data - \n"));
+    for (i = 0; i < secured_message_size-16; i+=8) {
+    	if (i + 8 >= secured_message_size - 16)
+    		nbytes = secured_message_size - 16 - i;
+    	LIBSPDM_INTERNAL_DUMP_DATA(secured_message + i, nbytes);
+    	LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+    }
+
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\nSecured message MAC - \n"));
+    LIBSPDM_INTERNAL_DUMP_DATA(secured_message + i, 8);
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+    LIBSPDM_INTERNAL_DUMP_DATA(secured_message + i + 8, 8);
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+
+}
 
 /**
  * Encode an application message to a secured message.
@@ -59,6 +162,7 @@ libspdm_return_t libspdm_encode_secured_message(
     uint32_t rand_count;
     uint32_t max_rand_count;
     libspdm_session_state_t session_state;
+    uint8_t *ptr, i;
 
     secured_message_context = spdm_secured_message_context;
 
@@ -167,6 +271,7 @@ libspdm_return_t libspdm_encode_secured_message(
             rand_count = 0;
         }
 
+        rand_count = 12;
         plain_text_size = sizeof(spdm_secured_message_cipher_header_t) + app_message_size +
                           rand_count;
         cipher_text_size = plain_text_size;
@@ -194,6 +299,7 @@ libspdm_return_t libspdm_encode_secured_message(
         enc_msg_header =
             (void *)((uint8_t *)app_message - sizeof(spdm_secured_message_cipher_header_t));
         enc_msg_header->application_data_length = (uint16_t)app_message_size;
+#if 0
         result = libspdm_get_random_number(rand_count,
                                            (uint8_t *)enc_msg_header +
                                            sizeof(spdm_secured_message_cipher_header_t) +
@@ -201,6 +307,13 @@ libspdm_return_t libspdm_encode_secured_message(
         if (!result) {
             return LIBSPDM_STATUS_LOW_ENTROPY;
         }
+#endif
+        ptr = (uint8_t *)enc_msg_header +
+                        sizeof(spdm_secured_message_cipher_header_t) +
+                        app_message_size;
+        for (i = 0; i < 12; i++)
+        	ptr[i] = i;
+
         libspdm_zero_mem((uint8_t *)enc_msg_header + plain_text_size, aead_pad_size);
 
         a_data = (uint8_t *)record_header1;
@@ -208,6 +321,14 @@ libspdm_return_t libspdm_encode_secured_message(
         dec_msg = (uint8_t *)enc_msg_header;
         tag = (uint8_t *)record_header1 + record_header_size +
               cipher_text_size;
+
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "encryption key - "));
+        LIBSPDM_INTERNAL_DUMP_DATA(key, aead_key_size);
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "IV - "));
+        LIBSPDM_INTERNAL_DUMP_DATA(salt, aead_iv_size);
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
 
         result = libspdm_aead_encryption(
             secured_message_context->secured_message_version,

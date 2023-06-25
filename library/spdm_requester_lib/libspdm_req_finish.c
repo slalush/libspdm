@@ -337,7 +337,6 @@ static libspdm_return_t libspdm_try_send_receive_finish(libspdm_context_t *spdm_
     libspdm_session_info_t *session_info;
     uint8_t *ptr;
     bool result;
-    uint8_t th2_hash_data[LIBSPDM_MAX_HASH_SIZE];
     libspdm_session_state_t session_state;
     uint8_t *message;
     size_t message_size;
@@ -347,7 +346,7 @@ static libspdm_return_t libspdm_try_send_receive_finish(libspdm_context_t *spdm_
     session_info = libspdm_get_session_info_via_session_id(spdm_context, session_id);
     if (session_info == NULL) {
         status = LIBSPDM_STATUS_INVALID_PARAMETER;
-        goto error;
+        goto error1;
     }
 
     /* -=[Verify State Phase]=- */
@@ -356,29 +355,29 @@ static libspdm_return_t libspdm_try_send_receive_finish(libspdm_context_t *spdm_
             SPDM_GET_CAPABILITIES_REQUEST_FLAGS_KEY_EX_CAP,
             SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_KEY_EX_CAP)) {
         status = LIBSPDM_STATUS_UNSUPPORTED_CAP;
-        goto error;
+        goto error1;
     }
 
     if (spdm_context->connection_info.connection_state < LIBSPDM_CONNECTION_STATE_NEGOTIATED) {
         status = LIBSPDM_STATUS_INVALID_STATE_LOCAL;
-        goto error;
+        goto error1;
     }
 
     session_state = libspdm_secured_message_get_session_state(
         session_info->secured_message_context);
     if (session_state != LIBSPDM_SESSION_STATE_HANDSHAKING) {
         status = LIBSPDM_STATUS_INVALID_STATE_LOCAL;
-        goto error;
+        goto error1;
     }
     if (session_info->mut_auth_requested != 0) {
         if ((req_slot_id_param >= SPDM_MAX_SLOT_COUNT) && (req_slot_id_param != 0xFF)) {
             status = LIBSPDM_STATUS_INVALID_PARAMETER;
-            goto error;
+            goto error1;
         }
     } else {
         if (req_slot_id_param != 0) {
             status = LIBSPDM_STATUS_INVALID_PARAMETER;
-            goto error;
+            goto error1;
         }
     }
 
@@ -386,7 +385,7 @@ static libspdm_return_t libspdm_try_send_receive_finish(libspdm_context_t *spdm_
     transport_header_size = spdm_context->transport_get_header_size(spdm_context);
     status = libspdm_acquire_sender_buffer (spdm_context, &message_size, (void **)&message);
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
-        goto error;
+        goto error1;
     }
     LIBSPDM_ASSERT (message_size >= transport_header_size);
     spdm_request = (void *)(message + transport_header_size);
@@ -424,7 +423,7 @@ static libspdm_return_t libspdm_try_send_receive_finish(libspdm_context_t *spdm_
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
         libspdm_release_sender_buffer (spdm_context);
         status = LIBSPDM_STATUS_BUFFER_FULL;
-        goto error;
+        goto error1;
     }
 #if LIBSPDM_ENABLE_CAPABILITY_MUT_AUTH_CAP
     if (session_info->mut_auth_requested) {
@@ -432,13 +431,13 @@ static libspdm_return_t libspdm_try_send_receive_finish(libspdm_context_t *spdm_
         if (!result) {
             libspdm_release_sender_buffer (spdm_context);
             status = LIBSPDM_STATUS_CRYPTO_ERROR;
-            goto error;
+            goto error1;
         }
         status = libspdm_append_message_f(spdm_context, session_info, true, ptr, signature_size);
         if (LIBSPDM_STATUS_IS_ERROR(status)) {
             libspdm_release_sender_buffer (spdm_context);
             status = LIBSPDM_STATUS_BUFFER_FULL;
-            goto error;
+            goto error1;
         }
         ptr += signature_size;
     }
@@ -448,21 +447,21 @@ static libspdm_return_t libspdm_try_send_receive_finish(libspdm_context_t *spdm_
     if (!result) {
         libspdm_release_sender_buffer (spdm_context);
         status = LIBSPDM_STATUS_CRYPTO_ERROR;
-        goto error;
+        goto error1;
     }
 
     status = libspdm_append_message_f(spdm_context, session_info, true, ptr, hmac_size);
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
         libspdm_release_sender_buffer (spdm_context);
         status = LIBSPDM_STATUS_BUFFER_FULL;
-        goto error;
+        goto error1;
     }
 
     /* -=[Send Request Phase]=- */
     status = libspdm_send_spdm_request(spdm_context, &session_id, spdm_request_size, spdm_request);
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
         libspdm_release_sender_buffer (spdm_context);
-        goto error;
+        goto error1;
     }
 
     libspdm_reset_message_buffer_via_request_code(spdm_context, session_info, SPDM_FINISH);
@@ -473,7 +472,7 @@ static libspdm_return_t libspdm_try_send_receive_finish(libspdm_context_t *spdm_
     /* -=[Receive Response Phase]=- */
     status = libspdm_acquire_receiver_buffer (spdm_context, &message_size, (void **)&message);
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
-        goto error;
+        goto error1;
     }
     LIBSPDM_ASSERT (message_size >= transport_header_size);
     spdm_response = (void *)(message);
@@ -483,7 +482,48 @@ static libspdm_return_t libspdm_try_send_receive_finish(libspdm_context_t *spdm_
     status = libspdm_receive_spdm_response(
         spdm_context, &session_id, &spdm_response_size, (void **)&spdm_response);
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
-        goto receive_done;
+        goto receive_done1;
+    }
+
+    status = libspdm_try_send_receive_key_exchange_dbg(spdm_context, spdm_request_size, (void *)spdm_request,
+    									 spdm_response_size, (void *)spdm_response);
+
+receive_done1:
+	libspdm_release_receiver_buffer (spdm_context);
+	return status;
+
+error1:
+	if (status != LIBSPDM_STATUS_BUSY_PEER) {
+		libspdm_free_session_id(spdm_context, session_id);
+	}
+
+	return status;
+}
+
+libspdm_return_t libspdm_try_send_receive_finish_dbg(libspdm_context_t *spdm_context, size_t request_size,
+    					 const void *request,
+    					 size_t response_size,
+    					 void *response)
+{
+    libspdm_return_t status;
+    const libspdm_finish_request_mine_t *spdm_request;
+    size_t hmac_size;
+    libspdm_finish_response_mine_t *spdm_response;
+    size_t spdm_response_size;
+    libspdm_session_info_t *session_info;
+    bool result;
+    uint32_t session_id = 0xFFFFFFFF;
+    uint8_t th2_hash_data[LIBSPDM_MAX_HASH_SIZE];
+
+    spdm_response_size = response_size;
+    spdm_response = response;
+    spdm_request = request;
+
+    /* -=[Check Parameters Phase]=- */
+    session_info = libspdm_get_session_info_via_session_id(spdm_context, session_id);
+    if (session_info == NULL) {
+        status = LIBSPDM_STATUS_INVALID_PARAMETER;
+        goto error;
     }
 
     /* -=[Validate Response Phase]=- */
@@ -583,15 +623,14 @@ static libspdm_return_t libspdm_try_send_receive_finish(libspdm_context_t *spdm_
     libspdm_append_msg_log(spdm_context, spdm_response, spdm_response_size);
     #endif /* LIBSPDM_ENABLE_MSG_LOG */
 
-    libspdm_release_receiver_buffer (spdm_context);
-
-    return LIBSPDM_STATUS_SUCCESS;
+     return LIBSPDM_STATUS_SUCCESS;
 
 receive_done:
     libspdm_release_receiver_buffer (spdm_context);
+
 error:
     if (status != LIBSPDM_STATUS_BUSY_PEER) {
-        libspdm_free_session_id(spdm_context, session_id);
+    	libspdm_free_session_id(spdm_context, session_id);
     }
 
     return status;

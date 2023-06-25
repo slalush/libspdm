@@ -1030,6 +1030,9 @@ bool libspdm_verify_challenge_auth_signature(libspdm_context_t *spdm_context,
 #endif
     }
 
+//    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "signature (0x%x):\n", signature_size));
+//    LIBSPDM_INTERNAL_DUMP_HEX(signature, signature_size);
+
  //   context = (void *)spdm_context->public_key;
 
     if (is_requester) {

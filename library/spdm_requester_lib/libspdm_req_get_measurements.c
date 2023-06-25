@@ -290,9 +290,9 @@ libspdm_return_t libspdm_try_get_measurement_dbg(libspdm_context_t *spdm_context
 	    size_t spdm_response_size = response_size;
 	    uint32_t measurement_record_data_length;
 	    uint8_t *measurement_record_data;
-	    spdm_measurement_block_common_header_t *measurement_block_header;
-	    uint32_t measurement_block_size;
-	    uint8_t measurement_block_count;
+	//    spdm_measurement_block_common_header_t *measurement_block_header;
+	//    uint32_t measurement_block_size;
+	 //   uint8_t measurement_block_count;
 	    uint16_t opaque_length;
 	    uint8_t *ptr;
 	    void *nonce;
@@ -307,8 +307,8 @@ libspdm_return_t libspdm_try_get_measurement_dbg(libspdm_context_t *spdm_context
 	    uint8_t *content_changed = NULL;
 	    uint8_t n_blocks;
 	    uint8_t *number_of_blocks = &n_blocks;
-	    uint32_t *measurement_record_length = NULL;
-	    void *measurement_record = NULL;
+	  //  uint32_t *measurement_record_length = NULL;
+	  //  void *measurement_record = NULL;
 	    uint8_t slot_id_param;
 
 		/* -=[Verify State Phase]=- */
@@ -583,6 +583,7 @@ libspdm_return_t libspdm_try_get_measurement_dbg(libspdm_context_t *spdm_context
         }
     } else {
         *number_of_blocks = spdm_response->number_of_blocks;
+#if 0
         if (*measurement_record_length < measurement_record_data_length) {
             status = LIBSPDM_STATUS_BUFFER_TOO_SMALL;
             goto receive_done;
@@ -643,7 +644,8 @@ libspdm_return_t libspdm_try_get_measurement_dbg(libspdm_context_t *spdm_context
                          measurement_record_data_length,
                          measurement_record_data,
                          measurement_record_data_length);
-    }
+#endif
+        }
 
     status = LIBSPDM_STATUS_SUCCESS;
 

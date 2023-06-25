@@ -83,6 +83,9 @@ bool libspdm_verify_key_exchange_rsp_hmac(libspdm_context_t *spdm_context,
         return false;
     }
 
+    //for (int i = 0; i < hash_size; i++)
+    //	hash_data[i] = 0xFF;
+
     result = libspdm_hmac_all_with_response_finished_key(
         session_info->secured_message_context, hash_data,
         hash_size, calc_hmac_data);
@@ -98,6 +101,10 @@ bool libspdm_verify_key_exchange_rsp_hmac(libspdm_context_t *spdm_context,
 #endif
     LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "th_curr hmac - "));
     LIBSPDM_INTERNAL_DUMP_DATA(calc_hmac_data, hash_size);
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "hmac_data - "));
+    LIBSPDM_INTERNAL_DUMP_DATA(hmac_data, hash_size);
     LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
 
     if (libspdm_const_compare_mem(calc_hmac_data, hmac_data, hash_size) != 0) {
@@ -446,6 +453,9 @@ receive_done1:
 	return status;
 }
 
+extern unsigned char *g_secret_key;
+extern unsigned char g_secret_key_size;
+
 libspdm_return_t libspdm_try_send_receive_key_exchange_dbg(libspdm_context_t *spdm_context, size_t request_size,
 					 const void *request,
 					 size_t response_size,
@@ -462,6 +472,7 @@ libspdm_return_t libspdm_try_send_receive_key_exchange_dbg(libspdm_context_t *sp
 	uint32_t signature_size;
 	uint32_t hmac_size;
 	uint8_t *ptr;
+	uint8_t *ptr2;
 	void *measurement_summary_hash;
 	uint16_t opaque_length;
 	uint8_t *signature;
@@ -597,7 +608,7 @@ libspdm_return_t libspdm_try_send_receive_key_exchange_dbg(libspdm_context_t *sp
         spdm_context->connection_info.algorithm.base_asym_algo);
     measurement_summary_hash_size = libspdm_get_measurement_summary_hash_size(
         spdm_context, true, measurement_hash_type);
-    hmac_size = 0;// libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
+    hmac_size = libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
     dhe_key_size = libspdm_get_dhe_pub_key_size(
         spdm_context->connection_info.algorithm.dhe_named_group);
 
@@ -729,7 +740,7 @@ libspdm_return_t libspdm_try_send_receive_key_exchange_dbg(libspdm_context_t *sp
     }
 
     spdm_context->connection_info.algorithm.dhe_named_group = 16;
-	ptr = spdm_request->exchange_data;
+	ptr2 = spdm_request->exchange_data;
 	dhe_key_size = libspdm_get_dhe_pub_key_size(
 		spdm_context->connection_info.algorithm.dhe_named_group);
 	dhe_context = libspdm_secured_message_dhe_new(
@@ -742,7 +753,7 @@ libspdm_return_t libspdm_try_send_receive_key_exchange_dbg(libspdm_context_t *sp
 
 	result = libspdm_secured_message_dhe_generate_key(
 		spdm_context->connection_info.algorithm.dhe_named_group,
-		dhe_context, ptr, &dhe_key_size);
+		dhe_context, ptr2, &dhe_key_size);
 	if (!result) {
 		libspdm_secured_message_dhe_free(
 			spdm_context->connection_info.algorithm.dhe_named_group, dhe_context);
@@ -750,22 +761,25 @@ libspdm_return_t libspdm_try_send_receive_key_exchange_dbg(libspdm_context_t *sp
 		return LIBSPDM_STATUS_CRYPTO_ERROR;
 	}
 	LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "RequesterKey (0x%x):\n", dhe_key_size));
-	LIBSPDM_INTERNAL_DUMP_HEX(ptr, dhe_key_size);
-	ptr += dhe_key_size;
+	LIBSPDM_INTERNAL_DUMP_HEX(ptr2, dhe_key_size);
+	//ptr += dhe_key_size;
 
-#if 0
-	result = libspdm_secured_message_dhe_compute_key(
-        spdm_context->connection_info.algorithm.dhe_named_group,
-        dhe_context, spdm_response->exchange_data, dhe_key_size,
-        session_info->secured_message_context);
-    libspdm_secured_message_dhe_free(
-        spdm_context->connection_info.algorithm.dhe_named_group, dhe_context);
-    if (!result) {
-        libspdm_free_session_id(spdm_context, *session_id);
-        status = LIBSPDM_STATUS_CRYPTO_ERROR;
-        goto receive_done;
-    }
-#endif
+//#if 0
+		result = libspdm_secured_message_dhe_compute_key(
+	        spdm_context->connection_info.algorithm.dhe_named_group,
+	        dhe_context, spdm_response->exchange_data, dhe_key_size,
+	        session_info->secured_message_context);
+	    libspdm_secured_message_dhe_free(
+	        spdm_context->connection_info.algorithm.dhe_named_group, dhe_context);
+	    if (!result) {
+	        libspdm_free_session_id(spdm_context, *session_id);
+	        status = LIBSPDM_STATUS_CRYPTO_ERROR;
+	        goto receive_done;
+	    }
+//#endif
+
+	LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "DHE secret key (0x%x):\n", g_secret_key_size));
+	LIBSPDM_INTERNAL_DUMP_HEX(g_secret_key, g_secret_key_size);
 
     LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "libspdm_generate_session_handshake_key[%x]\n",
                    *session_id));
@@ -775,6 +789,10 @@ libspdm_return_t libspdm_try_send_receive_key_exchange_dbg(libspdm_context_t *sp
         status = LIBSPDM_STATUS_CRYPTO_ERROR;
         goto receive_done;
     }
+
+   // for (int i = 0; i < 48; i++)
+    //	th1_hash_data[i] = 0xFF;
+
     result = libspdm_generate_session_handshake_key(
         session_info->secured_message_context, th1_hash_data);
     if (!result) {

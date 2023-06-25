@@ -62,6 +62,9 @@ bool libspdm_secured_message_dhe_generate_key(uint16_t dhe_named_group,
     return libspdm_dhe_generate_key(dhe_named_group, dhe_context, public_key, public_key_size);
 }
 
+unsigned char *g_secret_key;
+unsigned char g_secret_key_size;
+
 /**
  * Computes exchanged common key,
  * based upon negotiated DHE algorithm.
@@ -104,5 +107,8 @@ bool libspdm_secured_message_dhe_compute_key(
                      final_key, final_key_size);
     libspdm_zero_mem(final_key, final_key_size);
     secured_message_context->dhe_key_size = final_key_size;
+    g_secret_key_size = final_key_size;
+    g_secret_key = secured_message_context->master_secret.dhe_secret;
+
     return true;
 }

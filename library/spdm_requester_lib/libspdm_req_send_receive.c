@@ -700,6 +700,7 @@ libspdm_get_spdm_requester_func libspdm_get_request_func_via_request_code(uint8_
 		{ SPDM_CHALLENGE, libspdm_try_challenge_dbg },
 		{ SPDM_GET_MEASUREMENTS, libspdm_try_get_measurement_dbg },
 		{ SPDM_KEY_EXCHANGE, libspdm_try_send_receive_key_exchange_dbg },
+		{ SPDM_FINISH, libspdm_try_send_receive_finish_dbg },
     };
 
     LIBSPDM_ASSERT(request_code != SPDM_RESPOND_IF_READY);

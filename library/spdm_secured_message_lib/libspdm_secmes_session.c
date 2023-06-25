@@ -174,7 +174,7 @@ bool libspdm_generate_finished_key(
  * @retval RETURN_SUCCESS  SPDM HandshakeKey for a session is generated.
  **/
 bool libspdm_generate_session_handshake_key(void *spdm_secured_message_context,
-                                            const uint8_t *th1_hash_data)
+                                             const uint8_t *th1_hash_data)
 {
     bool status;
     size_t hash_size;
