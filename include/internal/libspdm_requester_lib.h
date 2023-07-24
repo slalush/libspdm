@@ -137,6 +137,12 @@ libspdm_return_t libspdm_try_get_certificate_dbg(libspdm_context_t *spdm_context
 					 const void *request,
 					 size_t response_size,
 					 void *response);
+
+libspdm_return_t libspdm_try_get_digest_dbg(libspdm_context_t *spdm_context, size_t request_size,
+					 const void *request,
+					 size_t response_size,
+					 void *response);
+
 /**
  * This function sends GET_CAPABILITIES and receives CAPABILITIES.
  *
