@@ -22,7 +22,7 @@ libspdm_return_t spdm_read_cmds_from_file(void *context)
     size_t n_read_bytes;
     uint32_t *fw_direct_rsp_mem_buf;
 
-    ptr = fopen("//home//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_cmds_new48.bin","rb");  // r for read, b for binary
+    ptr = fopen("//home//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_cmds_new55.bin","rb");  // r for read, b for binary
 //    ptr = fopen("spdm_resp2.bin","rb");  // r for read, b for binary
 
     n_read_bytes = fread((void *)&total_size,sizeof(uint32_t),1,ptr); // read 10 bytes to our buffer

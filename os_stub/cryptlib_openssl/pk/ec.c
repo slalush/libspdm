@@ -17,9 +17,9 @@
 #include <openssl/ec.h>
 #include <openssl/objects.h>
 
-extern unsigned char *generator_y_d;
+unsigned char *generator_y_d;
 //extern unsigned long long *generator_y_d2;
-extern unsigned char *generator_x_d;
+unsigned char *generator_x_d;
 
 unsigned char rev_generator_x_d[48];
 unsigned char rev_generator_y_d[48];
@@ -81,7 +81,7 @@ void *libspdm_ec_new_by_nid(size_t nid)
 
     //generator_x_d =  ec_group->generator->X->d;
    // generator_y_d =  ec_group->generator->X->d;
-    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "EC group generator (0x%x):\n", 48));
+    //LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "EC group generator (0x%x):\n", 48));
     LIBSPDM_INTERNAL_DUMP_HEX((uint8_t *)generator_x_d, 48);
     LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "EC group generator (0x%x):\n", 48));
     LIBSPDM_INTERNAL_DUMP_HEX((uint8_t *)generator_y_d, 48);
@@ -393,10 +393,10 @@ bool libspdm_ec_check_key(const void *ec_context)
     return true;
 }
 
-extern unsigned char *g_priv_key;
+unsigned char *g_priv_key;
 unsigned char g_rev_priv_key[48];
-extern unsigned char *g_pub_key_x;
-extern unsigned char *g_pub_key_y;
+unsigned char *g_pub_key_x;
+unsigned char *g_pub_key_y;
 unsigned char g_rev_pub_key_x[48];
 unsigned char g_rev_pub_key_y[48];
 
