@@ -3,8 +3,10 @@
  *  Copyright 2021-2022 DMTF. All rights reserved.
  *  License: BSD 3-Clause License. For full text see link: https://github.com/DMTF/libspdm/blob/main/LICENSE.md
  **/
+#include "stdio.h"
 
 #include "internal/libspdm_crypt_lib.h"
+#include "internal/libspdm_common_lib.h"
 
 /**pathLenConstraint is optional.
  * In https://www.pkisolutions.com/basic-constraints-certificate-extension/:
@@ -800,12 +802,14 @@ bool libspdm_x509_certificate_check(const uint8_t *cert, size_t cert_size,
     if (!status) {
         goto cleanup;
     }
+#if 0
     if (LIBSPDM_CRYPTO_X509_KU_DIGITAL_SIGNATURE & value) {
         status = true;
     } else {
         status = false;
         goto cleanup;
     }
+#endif
 
     /* 9. verify SPDM extension OID*/
     status = libspdm_verify_leaf_cert_eku_spdm_OID(cert, cert_size, is_device_cert_model);
@@ -859,6 +863,13 @@ bool libspdm_is_root_certificate(const uint8_t *cert, size_t cert_size)
     if (!result) {
         return false;
     }
+
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "issuer_name (0x%x) - ", issuer_name_len));
+    LIBSPDM_INTERNAL_DUMP_HEX_STR(issuer_name, issuer_name_len);
+	LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "subject_name (0x%x) - ", subject_name_len));
+    LIBSPDM_INTERNAL_DUMP_HEX_STR(subject_name, subject_name_len);
+	LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
 
     if (issuer_name_len != subject_name_len) {
         return false;
@@ -1146,9 +1157,23 @@ bool libspdm_verify_certificate_chain_buffer(uint32_t base_hash_algo, uint32_t b
         return false;
     }
 
+    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "first_cert_buffer (0x%x) - ", first_cert_buffer_size));
+	LIBSPDM_INTERNAL_DUMP_DATA(first_cert_buffer, first_cert_buffer_size);
+	LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+
     if (libspdm_is_root_certificate(first_cert_buffer, first_cert_buffer_size)) {
         result = libspdm_hash_all(base_hash_algo, first_cert_buffer, first_cert_buffer_size,
                                   calc_root_cert_hash);
+
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "calc_root_cert_hash (0x%x) - ", hash_size));
+        LIBSPDM_INTERNAL_DUMP_DATA(calc_root_cert_hash, hash_size);
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "rcvd_root_cert_hash (0x%x) - ", hash_size));
+        LIBSPDM_INTERNAL_DUMP_DATA((const uint8_t *)cert_chain_buffer + sizeof(spdm_cert_chain_t),
+        						   hash_size);
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "\n"));
+
         if (!result) {
             LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO,
                            "!!! VerifyCertificateChainBuffer - FAIL (hash calculation fail) !!!\n"));

@@ -22,7 +22,7 @@ libspdm_return_t spdm_read_cmds_from_file(void *context)
     size_t n_read_bytes;
     uint32_t *fw_direct_rsp_mem_buf;
 
-    ptr = fopen("//home//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_cmds_new55.bin","rb");  // r for read, b for binary
+    ptr = fopen("//home//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_cmds_new18.bin","rb");  // r for read, b for binary
 //    ptr = fopen("spdm_resp2.bin","rb");  // r for read, b for binary
 
     n_read_bytes = fread((void *)&total_size,sizeof(uint32_t),1,ptr); // read 10 bytes to our buffer
@@ -55,7 +55,7 @@ libspdm_return_t spdm_read_pk_from_file(void *context)
     libspdm_data_parameter_t parameter;
 
 //    ptr = fopen("//home//ewurmbra//slalush//spdm-emu//spdm_emu//spdm_requester_emu//spdm_resp2.bin","rb");  // r for read, b for binary
-    ptr = fopen("//home//slalush//spdm-emu//spdm_emu//spdm_requester_emu//public_key.der","rb");  // r for read, b for binary
+    ptr = fopen("//home//slalush//spdm-emu//spdm_emu//spdm_requester_emu//public_key3.der","rb");  // r for read, b for binary
 
    // (void)fread((void *)spdm_context->public_key, total_size, 1, ptr); // read 10 bytes to our buffer
     //if (n_read_bytes2 != total_size)
@@ -148,7 +148,7 @@ libspdm_return_t spdm_verify_response_msg(void *context)
     struct fw_direct_cmd_header *header;
     libspdm_return_t status;
     libspdm_get_spdm_requester_func get_request_func;
-    uint8_t my_response[LIBSPDM_MAX_MESSAGE_MEDIUM_BUFFER_SIZE];
+    uint8_t my_response[LIBSPDM_MAX_MESSAGE_LARGE_BUFFER_SIZE];
     size_t my_response_size = LIBSPDM_MAX_MESSAGE_MEDIUM_BUFFER_SIZE;
     uint8_t my_request[LIBSPDM_MAX_MESSAGE_MEDIUM_BUFFER_SIZE];
     size_t my_request_size = LIBSPDM_MAX_MESSAGE_MEDIUM_BUFFER_SIZE;

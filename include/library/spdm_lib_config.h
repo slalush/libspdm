@@ -73,7 +73,7 @@
  * in bytes, of a partial certificate that can be sent or received.
  */
 #ifndef LIBSPDM_MAX_CERT_CHAIN_BLOCK_LEN
-#define LIBSPDM_MAX_CERT_CHAIN_BLOCK_LEN 1024
+#define LIBSPDM_MAX_CERT_CHAIN_BLOCK_LEN 3072
 #endif
 
 #ifndef LIBSPDM_MAX_MESSAGE_BUFFER_SIZE

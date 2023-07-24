@@ -6,6 +6,7 @@
 
 #include "internal/libspdm_requester_lib.h"
 
+
 #if LIBSPDM_ENABLE_CAPABILITY_CERT_CAP
 
 #pragma pack(1)
@@ -189,6 +190,10 @@ done1:
 	return status;
 }
 
+extern bool libspdm_ec_get_pub_key(void *ec_context, uint8_t *public_key, size_t *public_key_size);
+extern int libspdm_ec_get_der_pub_key(void *ec_context, uint8_t *public_key,
+        size_t *public_key_size);
+
 libspdm_return_t libspdm_try_get_certificate_dbg(libspdm_context_t *spdm_context, size_t request_size,
 					 const void *request,
 					 size_t response_size,
@@ -212,6 +217,11 @@ libspdm_return_t libspdm_try_get_certificate_dbg(libspdm_context_t *spdm_context
 	uint8_t slot_id = 0;
 	size_t *cert_chain_size = NULL;
 	void *cert_chain = NULL;
+	void *ec_context;
+	uint8_t public_key[100];
+	size_t public_key_size=96;
+	uint8_t der_public_key[200];
+	size_t der_public_key_size=200;
 
 	session_info = NULL;
 
@@ -348,6 +358,26 @@ libspdm_return_t libspdm_try_get_certificate_dbg(libspdm_context_t *spdm_context
             goto done;
         }
     }
+
+    uint32_t base_hash_algo = spdm_context->connection_info.algorithm.base_hash_algo;
+    uint32_t base_asym_algo = spdm_context->connection_info.algorithm.base_asym_algo;
+    /* extract leaf certificate public key context data (Elliptic Curve (EC) context data) */
+	result = libspdm_get_leaf_cert_public_key_from_cert_chain(base_hash_algo, base_asym_algo,
+			libspdm_get_managed_buffer(&certificate_chain_buffer),
+			libspdm_get_managed_buffer_size(&certificate_chain_buffer), &ec_context);
+
+    	/* extract raw public key from EC context data */
+	result = libspdm_ec_get_pub_key(ec_context, public_key, &public_key_size);
+
+
+	LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "raw public key (size 0x%x):\n", public_key_size));
+	LIBSPDM_INTERNAL_DUMP_HEX(public_key, public_key_size);
+
+
+	int ret = libspdm_ec_get_der_pub_key(ec_context, der_public_key, &der_public_key_size);
+
+	LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "der public key (size 0x%x):\n", ret));
+	LIBSPDM_INTERNAL_DUMP_HEX(der_public_key + 8, ret);
 
     spdm_context->connection_info.peer_used_cert_chain_slot_id = slot_id;
 #if LIBSPDM_RECORD_TRANSCRIPT_DATA_SUPPORT

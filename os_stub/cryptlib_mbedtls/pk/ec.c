@@ -17,6 +17,13 @@
 #include <mbedtls/ecdsa.h>
 #include <mbedtls/bignum.h>
 
+#include "mbedtls/entropy.h"
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/pk.h"
+
+#include <stdio.h>
+#include <string.h>
+
 /**
  * Allocates and Initializes one Elliptic Curve context for subsequent use
  * with the NID.
@@ -260,6 +267,41 @@ bool libspdm_ec_get_pub_key(void *ec_context, uint8_t *public_key,
     }
 
     return true;
+}
+
+int libspdm_ec_get_der_pub_key(void *ec_context, uint8_t *public_key,
+                            size_t *public_key_size)
+{
+	mbedtls_ecdh_context *ecdh_ctx;
+//	unsigned char der_buf[512]; // Adjust the buffer size as needed
+    mbedtls_pk_context pk_ctx;
+// 	mbedtls_entropy_context entropy_ctx;
+ //   mbedtls_ctr_drbg_context drbg_ctx;
+
+	// Initialize contexts
+	mbedtls_pk_init(&pk_ctx);
+	ecdh_ctx = ec_context;
+//	mbedtls_entropy_init(&entropy_ctx);
+//	mbedtls_ctr_drbg_init(&drbg_ctx);
+
+	// Seed the DRBG (Deterministic Random Bit Generator)
+//	const char *personalization = "ECDH example";
+//	mbedtls_entropy_init(&entropy_ctx);
+//	mbedtls_ctr_drbg_seed(&drbg_ctx, mbedtls_entropy_func, &entropy_ctx, (const unsigned char *)personalization, strlen(personalization));
+
+	// Create an mbedtls_pk_info structure for ECDH keys
+	const mbedtls_pk_info_t *pk_info = mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY);
+
+	// Set the public key in the mbedtls_pk_context
+	mbedtls_pk_setup(&pk_ctx, pk_info);
+	mbedtls_ecp_keypair *ecdh_keypair = mbedtls_pk_ec(pk_ctx);
+	mbedtls_ecp_group_copy(&ecdh_keypair->grp, &ecdh_ctx->grp);
+	mbedtls_mpi_copy(&ecdh_keypair->d, &ecdh_ctx->d);
+	mbedtls_ecp_copy(&ecdh_keypair->Q, &ecdh_ctx->Q);
+
+	// Convert the public key to DER format
+	int ret = mbedtls_pk_write_pubkey_der(&pk_ctx, public_key, 128);
+	return ret;
 }
 
 /**
@@ -694,6 +736,16 @@ bool libspdm_ecdsa_verify(void *ec_context, size_t hash_nid,
         mbedtls_mpi_free(&bn_s);
         return false;
     }
+
+#if 0
+    uint8_t *ptr = bn_r.p;
+    uint8_t *ptr2 = bn_s.p;
+    for (int i = 0; i < 48; i++)
+    {
+    	pointx[i] = ptr[i];
+    	pointy[i] = ptr2[i];
+    }
+#endif
 
     ret = mbedtls_ecdsa_verify(&ctx->grp, message_hash, hash_size, &ctx->Q,
                                &bn_r, &bn_s);

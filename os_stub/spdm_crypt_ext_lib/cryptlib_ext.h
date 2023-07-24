@@ -461,6 +461,8 @@ extern bool libspdm_ec_set_priv_key(void *ec_context, const uint8_t *private_key
  **/
 extern bool libspdm_ec_get_pub_key(void *ec_context, uint8_t *public_key, size_t *public_key_size);
 
+extern int libspdm_ec_get_der_pub_key(void *ec_context, uint8_t *public_key,
+        size_t *public_key_size);
 /**
  * Validates key components of EC context.
  * NOTE: This function performs integrity checks on all the EC key material, so

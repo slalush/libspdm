@@ -926,6 +926,9 @@ bool libspdm_verify_public_key_hash(libspdm_context_t *spdm_context,
     return true;
 }
 
+extern uint8_t pointx[];
+extern uint8_t pointy[];
+
 /**
  * This function verifies the challenge signature based upon m1m2.
  *
@@ -1030,9 +1033,6 @@ bool libspdm_verify_challenge_auth_signature(libspdm_context_t *spdm_context,
 #endif
     }
 
-//    LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "signature (0x%x):\n", signature_size));
-//    LIBSPDM_INTERNAL_DUMP_HEX(signature, signature_size);
-
  //   context = (void *)spdm_context->public_key;
 
     if (is_requester) {
@@ -1042,6 +1042,13 @@ bool libspdm_verify_challenge_auth_signature(libspdm_context_t *spdm_context,
             spdm_context->connection_info.algorithm.base_asym_algo,
             spdm_context->connection_info.algorithm.base_hash_algo,
             context, m1m2_buffer, m1m2_buffer_size, sign_data, sign_data_size);
+
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "public key point X(0x%x):\n", 48));
+        LIBSPDM_INTERNAL_DUMP_HEX(pointx, 48);
+
+        LIBSPDM_DEBUG((LIBSPDM_DEBUG_INFO, "public key point Y(0x%x):\n", 48));
+        LIBSPDM_INTERNAL_DUMP_HEX(pointy, 48);
+
         libspdm_asym_free(
             spdm_context->connection_info.algorithm.base_asym_algo, context);
 #else

@@ -556,6 +556,8 @@ libspdm_return_t libspdm_try_send_receive_finish_dbg(libspdm_context_t *spdm_con
         goto receive_done;
     }
 
+    hmac_size = libspdm_get_hash_size(spdm_context->connection_info.algorithm.base_hash_algo);
+
     if (!libspdm_is_capabilities_flag_supported(
             spdm_context, true,
             SPDM_GET_CAPABILITIES_REQUEST_FLAGS_HANDSHAKE_IN_THE_CLEAR_CAP,

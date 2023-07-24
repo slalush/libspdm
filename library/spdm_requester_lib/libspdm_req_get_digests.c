@@ -51,9 +51,6 @@ static libspdm_return_t libspdm_try_get_digest(libspdm_context_t *spdm_context,
     size_t spdm_request_size;
     libspdm_digests_response_max_t *spdm_response;
     size_t spdm_response_size;
-    size_t digest_size;
-    size_t digest_count;
-    size_t index;
     uint8_t *message;
     size_t message_size;
     size_t transport_header_size;
@@ -123,8 +120,51 @@ static libspdm_return_t libspdm_try_get_digest(libspdm_context_t *spdm_context,
     status = libspdm_receive_spdm_response(
         spdm_context, session_id, &spdm_response_size, (void **)&spdm_response);
     if (LIBSPDM_STATUS_IS_ERROR(status)) {
-        goto receive_done;
+        goto receive_done1;
     }
+
+    status = libspdm_try_get_digest_dbg(spdm_context, spdm_request_size, (void *)spdm_request,
+                		    	    	         	 spdm_response_size, (void *)spdm_response);
+	if (LIBSPDM_STATUS_IS_ERROR(status)) {
+		libspdm_release_receiver_buffer (spdm_context);
+		status = LIBSPDM_STATUS_RECEIVE_FAIL;
+		goto receive_done1;
+	}
+
+receive_done1:
+    	libspdm_release_receiver_buffer (spdm_context);
+    	return status;
+}
+
+libspdm_return_t libspdm_try_get_digest_dbg(libspdm_context_t *spdm_context, size_t request_size,
+					 const void *request,
+					 size_t response_size,
+					 void *response)
+{
+
+    libspdm_return_t status;
+    spdm_get_digest_request_t *spdm_request = (spdm_get_digest_request_t *)request;
+    size_t spdm_request_size = request_size;
+    libspdm_digests_response_max_t *spdm_response = (libspdm_digests_response_max_t *)response;
+    size_t spdm_response_size = response_size;
+    size_t digest_size;
+    size_t digest_count;
+    size_t index;
+    libspdm_session_info_t *session_info = NULL;
+    uint8_t *slot_mask = NULL;
+    void *total_digest_buffer = NULL;
+    uint32_t *session_id = NULL;
+
+    if (!libspdm_is_capabilities_flag_supported(
+			spdm_context, true, 0,
+			SPDM_GET_CAPABILITIES_RESPONSE_FLAGS_CERT_CAP)) {
+		return LIBSPDM_STATUS_UNSUPPORTED_CAP;
+	}
+	if (spdm_context->connection_info.connection_state < LIBSPDM_CONNECTION_STATE_NEGOTIATED) {
+		return LIBSPDM_STATUS_INVALID_STATE_LOCAL;
+	}
+
+    libspdm_reset_message_buffer_via_request_code(spdm_context, session_info, SPDM_GET_DIGESTS);
 
     /* -=[Validate Response Phase]=- */
     if (spdm_response_size < sizeof(spdm_message_header_t)) {
@@ -219,7 +259,6 @@ static libspdm_return_t libspdm_try_get_digest(libspdm_context_t *spdm_context,
     #endif /* LIBSPDM_ENABLE_MSG_LOG */
 
 receive_done:
-    libspdm_release_receiver_buffer (spdm_context);
     return status;
 }
 
